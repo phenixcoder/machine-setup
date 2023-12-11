@@ -1,0 +1,25 @@
+#!/bin/bash
+
+# check if brew is available
+if command -v brew >/dev/null ; then
+  echo "Brew: $(brew --version)"
+else
+  echo "Brew is not installed. Installing brew."
+  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+fi
+
+# check if gum is available
+if command -v gum >/dev/null ; then
+  echo "Gum: $(gum --version)"
+else
+  echo "Gum is not installed. Installing gum."
+  brew install gum
+fi
+
+# check if jq is available
+if command -v jq >/dev/null ; then
+  echo "jq: $(jq --version)"
+else
+  echo "jq is not installed. Installing jq."
+  brew install jq
+fi

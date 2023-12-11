@@ -1,0 +1,95 @@
+#!/bin/zsh
+
+# import ../lib/packages.sh file
+source ../lib/packages.sh
+
+gum style --border normal --margin "1" --padding "1 2" --border-foreground 212 "Welcom to Code-Mini Dev machine Setup Script"
+# OP=$(gum choose --cursor-prefix "[ ] " --selected-prefix "[✓] " --no-limit "ALL" "SPECIFIC" "SKIP")
+OP=$(gum choose --header="What type of installation you want?" "Manage Libs" "Manage Software" "Install All")
+
+function get_version_of_installed_formula() {
+  formula=$1
+  version=$(brew list --versions $formula | awk '{print $NF}')
+  echo $version
+}
+
+function get_version_of_installed_cask() {
+  cask=$1
+  version=$(brew list --cask --versions $cask | awk '{print $NF}')
+  echo $version
+}
+
+function install_items() {
+  PACKAGE_TYPE=$1 # formula or cask
+  shift
+  PACKAGES=("$@")
+  INSTALLED_LIBS=""
+  INSTALLED_ARR=()
+
+  gum log -l info "Checking installed $PACKAGE_TYPE ..."
+
+  # loop through $PACKAGES and install them
+  for package in $PACKAGES; do
+    version=""
+    if [ $PACKAGE_TYPE = "cask" ]; then
+      version=$(get_version_of_installed_cask $package)
+    else
+      version=$(get_version_of_installed_formula $package)
+    fi
+
+    # check if package version exists
+    if [ "$version" != "" ]; then
+      INSTALLED_LIBS="$INSTALLED_LIBS,$package"
+      INSTALLED_ARR+=($package)
+    fi
+  done
+
+  TO_INSTALL_LIBS=($(gum choose --header="Libraries on your machine" --no-limit $PACKAGES --selected=$INSTALLED_LIBS))
+
+  # If $INSTALLED_LIBS is same as $TO_INSTALL_LIBS then display message
+  if [ "$INSTALLED_ARR" = "$TO_INSTALL_LIBS" ]; then
+    gum log -l info "All $PACKAGE_TYPE(s) are already installed. Exiting."
+    exit 0
+  fi
+
+  # loop through $INSTALLED_LIBS and check if that package is there in $TO_INSTALL_LIBS
+  for package in $INSTALLED_ARR; do
+    if [[ $TO_INSTALL_LIBS != *"$package"* ]]; then
+      gum spin --title="Uninstalling $package" brew uninstall $package
+      echo "$package uninstalled."
+    fi
+  done
+
+  # loop through $TO_INSTALL_LIBS_ARR and check if that package is there in $INSTALLED_LIBS
+  for package in $TO_INSTALL_LIBS; do
+    # check if package command exists
+    package_command=${PACKAGE_ALT_COMMANDS[$package]}
+
+    if [[ $INSTALLED_LIBS != *"$package"* ]]; then
+      # install package
+      if [ $PACKAGE_TYPE = "cask" ]; then
+        version=$(get_version_of_installed_formula $package)
+        gum spin --title="Installing $package" $(brew install --cask $package)
+      else
+        version=$(get_version_of_installed_formula $package)
+        gum spin --title="Installing $package" brew install $package
+      fi
+      echo "$package installed."
+
+    fi
+  done
+}
+
+# switch case for value of OP
+case $OP in
+"Manage Libs")
+  install_items formula $BREW_PACKAGES
+  ;;
+"Manage Software")
+  install_items cask $BREW_CASK_PACKAGES
+  ;;
+*)
+  echo "Invalid option selected. Exiting."
+  exit 1
+  ;;
+esac
